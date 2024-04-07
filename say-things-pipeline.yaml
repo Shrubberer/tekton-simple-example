@@ -1,0 +1,103 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  annotations:
+  name: say-things-in-order
+  namespace: python
+spec:
+  tasks:
+    - name: first-task
+      params:
+        - name: pause-duration
+          value: '2'
+        - name: say-what
+          value: 'Hello, this is the first task'
+      taskRef:
+        kind: Task
+        name: say-something
+    - name: second-task
+      params:
+        - name: say-what
+          value: 'Happening after task 1, in parallel with task 3'
+        - name: pause-duration
+          value: '2'
+      runAfter:
+        - first-task
+      taskRef:
+        kind: Task
+        name: say-something
+    - name: third-task
+      params:
+        - name: say-what
+          value: 'Happening after task 1, in parallel with task 2'
+        - name: pause-duration
+          value: '1'
+      runAfter:
+        - first-task
+      taskRef:
+        kind: Task
+        name: say-something
+    - name: fourth-task
+      params:
+        - name: say-what
+          value: Happening after task 2 and 3
+      runAfter:
+        - second-task
+        - third-task
+      taskRef:
+        kind: Task
+        name: say-something
+
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  annotations:
+  name: hello
+  namespace: python
+spec:
+  params:
+    - default: Baldrick
+      description: Name of person to greet
+      name: person
+      type: string
+  steps:
+    - args:
+        - '-c'
+        - echo Howdy $(params.person)
+      command:
+        - /bin/bash
+      computeResources: {}
+      image: registry.access.redhat.com/ubi8/ubi
+      name: say-hello
+
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  annotations:
+  name: say-something
+  namespace: python
+spec:
+  params:
+    - default: hello
+      description: What should I say
+      name: say-what
+      type: string
+    - default: '0'
+      description: How long to wait before saying something
+      name: pause-duration
+      type: string
+  steps:
+    - args:
+        - '-c'
+        - sleep $(params.pause-duration) && echo $(params.say-what)
+      command:
+        - /bin/bash
+      computeResources: {}
+      image: registry.access.redhat.com/ubi8/ubi
+      name: say-it
+
+
