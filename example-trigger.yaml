@@ -1,0 +1,52 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: hello-world-listener
+  namespace: python
+spec:
+  namespaceSelector: {}
+  resources: {}
+  serviceAccountName: pipeline
+  triggers:
+    - bindings:
+        - kind: TriggerBinding
+          ref: hello-world-binding
+      interceptors:
+        - params:
+            - name: filter
+              value: body.repository.name == 'test'
+            - name: overlays
+              value: null
+          ref:
+            kind: ClusterInterceptor
+            name: cel
+      name: hello-world-trigger
+      template:
+        ref: hello-world-template
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: hello-world-template
+  namespace: python
+spec:
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: hello-world-run-
+      spec:
+        pipelineRef:
+          name: say-things-in-order
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: hello-world-binding
+  namespace: python
+spec:
+  params:
+    - name: git-repo-name
+      value: $(body.repository.name)
+    - name: git-revision
+      value: $(body.after)
